@@ -4,7 +4,7 @@
 """
 
 import sys
-sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/mphys-code/src')
+sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/summer2023-code/src')
 
 import argparse
 from ase.io import write

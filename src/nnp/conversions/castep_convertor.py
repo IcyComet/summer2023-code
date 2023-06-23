@@ -209,7 +209,7 @@ class Castep_MD_Convertor(Castep_Convertor):
         i = 0
         while cont:
             line = self.file.readline().split()
-            i=+1
+            i+=1
             
             if len(line) < 2:
                 continue
