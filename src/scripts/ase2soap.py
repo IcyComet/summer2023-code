@@ -13,10 +13,10 @@ import fps
 
 def main(infile: str, outfile: str, slice_at: str= ':'):
 
-    data = read(infile, slice_at)
-    soap_data = fps.calculate_soap(data)    
-
-    sparse.save_npz(outfile, soap_data)
+    with open(infile) as f:
+        data = read(f, index=slice_at)
+        soap_data = fps.calculate_soap(data)    
+        sparse.save_npz(outfile, soap_data)
 
 
 if __name__=='__main__':

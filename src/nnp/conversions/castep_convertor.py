@@ -4,8 +4,7 @@
 import numpy as np
 import ase
 from ase.calculators.singlepoint import SinglePointCalculator
-
-import warnings
+import re
 
 from .general_convertor import General_Convertor
    
@@ -20,19 +19,14 @@ class Castep_Convertor(General_Convertor):
 
     def __init__(self, file):
         super(Castep_Convertor, self).__init__(file)
-        
-        # find the end of the reading 
-        self.max_iter = self.get_file_size()
+
         self.file.seek(0)
 
         #  find the end of the fiel
         self.file_size = self.find_EOF()
         self.file.seek(0)
 
-    def get_file_size(self):
-        self.file.seek(0, 2)
-        return self.file.tell()
-        
+    
     def read_cell(self):
         """Reads the unit cell from the file.
         """
@@ -155,35 +149,26 @@ class Castep_MD_Convertor(Castep_Convertor):
     def read(self, pbc: bool = True) -> list:
         """Reads the file and returns a list of ase.Atoms objects.
         """
-        print(-1)
         traj = []
         cell = self.read_cell()
-        i=0
 
         while not self.check_EOF():
-            print(0)
             cell_positions, symbols = self.read_positions()
             if self.check_EOF():
                 break
-            print(1)
             positions = [cell.dot(np.array(pos)) for pos in cell_positions]
             if self.check_EOF():
                 break
-            print(2)
             forces = self.read_forces()
             if self.check_EOF():
                 break
-            print(3)
             energy = self.read_energy()
             if self.check_EOF():
                 break
-            print(4)
             atoms = ase.Atoms(symbols = symbols, positions=positions, cell=cell)
             atoms.calc = SinglePointCalculator(atoms=atoms, energy=energy, forces=forces)
             atoms.set_pbc((pbc, pbc, pbc))
-            print(atoms)
-            traj.append(atoms)     
-            i+=1       
+            traj.append(atoms)           
             
         return traj
 
@@ -204,23 +189,12 @@ class Castep_MD_Convertor(Castep_Convertor):
         """Find the end of the file.
         """
         # TODO: rewrite this with regex
-
-        cont = True
+        #FIXME
+        pattern = re.compile("finished MD iteration")
         i = 0
-        while cont:
-            line = self.file.readline().split()
-            i+=1
-            
-            if len(line) < 2:
-                continue
-            cont = ((line[-2:] != ['Stop', 'execution.']) and
-                    (line != ['Finished', 'MD']) and 
-                    (i < self.max_iter))
-            
-        if not i < self.max_iter:
-            warnings.warn('Max iteration reached when searching to EOF. Something is wrong with the file, or the max_iter is too low.')
-        
-        return self.file.tell()
+        while (line := self.file.readline()):
+            i = self.file.tell() if pattern.search(line) is not None else i
+        return i
 
 
 class Castep_SCF_Convertor(Castep_Convertor):
@@ -284,4 +258,8 @@ class Castep_SCF_Convertor(Castep_Convertor):
         return energy
 
     def find_EOF(self):
-        return self.max_iter
+        pattern = re.compile("END HEADER")
+        i = 0
+        while (line := self.file.readline()):
+            i = self.file.tell() if pattern.search(line) is not None else i
+        return i
