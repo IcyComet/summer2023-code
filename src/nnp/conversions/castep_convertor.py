@@ -258,6 +258,7 @@ class Castep_SCF_Convertor(Castep_Convertor):
         return energy
 
     def find_EOF(self):
+        #FIXME untested i.e. possibly slow and incorrect!
         pattern = re.compile("END HEADER")
         i = 0
         while (line := self.file.readline()):
