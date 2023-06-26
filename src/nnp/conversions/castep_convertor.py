@@ -1,5 +1,3 @@
-# This should definitely be rewritten with regex. 
-# Sorry for the mess.
 
 import numpy as np
 import ase
@@ -188,12 +186,12 @@ class Castep_MD_Convertor(Castep_Convertor):
     def find_EOF(self):
         """Find the end of the file.
         """
-        # TODO: rewrite this with regex
         #FIXME
         pattern = re.compile("finished MD iteration")
         i = 0
         while (line := self.file.readline()):
-            i = self.file.tell() if pattern.search(line) is not None else i
+            if pattern.search(line) is not None:
+                i = self.file.tell()
         return i
 
 
@@ -258,9 +256,4 @@ class Castep_SCF_Convertor(Castep_Convertor):
         return energy
 
     def find_EOF(self):
-        #FIXME untested i.e. possibly slow and incorrect!
-        pattern = re.compile("END HEADER")
-        i = 0
-        while (line := self.file.readline()):
-            i = self.file.tell() if pattern.search(line) is not None else i
-        return i
+        return self.file.seek(0, 2)
