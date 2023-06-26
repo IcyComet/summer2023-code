@@ -24,8 +24,11 @@ def convert(files: list,
         with open(filname, 'r') as file:
             reader = Conv(file, finite_set_correction=finite_set_correction)
             traj += reader.read(pbc=pbc)
-    write(outfil, traj, append=True)
     
+    """NOTE make append=True and use try-except OSError with open(file,"w").close() and pass 
+    if unexpected behaviour occurs""" 
+    write(outfil, traj, append=False)
+    return
 
 if __name__ == '__main__':
     
