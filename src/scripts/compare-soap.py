@@ -6,8 +6,8 @@ import sparse
 
 def main(soapfile_a: str, soapfile_b: str, tolerance: float):
     matrixA, matrixB = sparse.load_npz(soapfile_a), sparse.load_npz(soapfile_b)
-    print(f"first SOAP file has shape: {matrixA.shape}")
-    print(f"second SOAP file has shape: {matrixB.shape}")
+    print(f"{soapfile_a} has shape: {matrixA.shape}")
+    print(f"{soapfile_b} has shape: {matrixB.shape}")
     differences = np.abs(matrixA - matrixB) > tolerance
     print(f"number of elements outwith tolerance: {differences.nnz}")
     return
