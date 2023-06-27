@@ -6,7 +6,6 @@ import sys
 sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/summer2023-code/src')
 
 import argparse
-from ase.io import read
 import sparse
 from nnp.conversions.castep_convertor import Castep_SCF_Convertor, Castep_MD_Convertor
 
