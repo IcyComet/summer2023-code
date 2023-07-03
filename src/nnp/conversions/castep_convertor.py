@@ -149,8 +149,10 @@ class Castep_MD_Convertor(Castep_Convertor):
         """
         traj = []
         cell = self.read_cell()
+        count = self.count_iterations() + 1 #NOTE +1 to include initial configuration before MD
 
-        while not self.check_EOF():
+        for _ in range(count):
+            #NOTE possibly add check_EOF() call here 
             cell_positions, symbols = self.read_positions()
             if self.check_EOF():
                 break
@@ -192,6 +194,17 @@ class Castep_MD_Convertor(Castep_Convertor):
         while (line := self.file.readline()):
             if pattern.search(line) is not None:
                 i = self.file.tell()
+        return i
+    
+    def count_iterations(self) -> int:
+        self.file.seek(0)
+        pattern = re.compile("finished MD iteration\s+([0-9]+)")
+        i = 0
+        while (line := self.file.readline()):
+            x = pattern.search(line)
+            if x is not None:
+                i = int(x.group(1))
+        self.file.seek(0)
         return i
 
 
