@@ -11,10 +11,12 @@ import matplotlib.pyplot as plt
 import pickle
 import tables
 
-from ase.io import iread
+from ase.io import read
 
 from scipy.stats import gaussian_kde
 from nnp.analysis.testing import get_schnet_data, get_calculator, load_model_commitee
+
+from nnp.conversions.castep_convertor import Castep_MD_Convertor
 
 
 def color_hist(ax, size, x, y, line=False):
@@ -46,6 +48,7 @@ def test_model(fn_ref: str,
                 store_std: bool = False,
                 single: bool = False,
                 sample: int = None,
+                read_castep: bool = False,
                 ):
     """Test a model on a reference trajectory.
 
@@ -58,6 +61,7 @@ def test_model(fn_ref: str,
         store_std (bool): store standard deviation in output file
         single (bool): test a single model
         sample (int): sample every n-th frame
+        read_castep (bool): read castep trajectory
     """
 
     init_files = False
@@ -74,12 +78,16 @@ def test_model(fn_ref: str,
     
     energies_schnet_std = None
     forces_schnet_std = None
+    
+    if read_castep:
+        with open(fn_ref, 'rb') as f:
+            reader = Castep_MD_Convertor(f)
+            data = reader.read(pbc = True, )[::sample]
+    else:
+        data = read(fn_ref, index = ':')[::sample]
 
-    for i, atoms in enumerate(iread(fn_ref)):
-        
-        if i % sample != 0:
-            # sampling does not work with in iread so I have to do it manually
-            continue
+
+    for atoms in data:
         
         if fn_out_schnet is not None and not init_files:
             initilize_output_files(fn_out_schnet, store_forces, store_std, atoms)
@@ -204,7 +212,13 @@ if __name__ == '__main__':
                         help='Only use single model')
     parser.add_argument('-n', '--sample', type=int, default=None,
                         help='Number of samples to use for each structure')
+    parser.add_argument('-c', '--castep', action='store_true',
+                        help='Use our castep reader instead of ase for reading reference data')
     
     args = parser.parse_args()
 
-    test_model(args.fn_ref, args.dir_model, args.outfile, args.outfile_schnet, args.store_forces, args.store_std, args.single, args.sample)
+    test_model(
+        args.fn_ref, args.dir_model, args.outfile, 
+        args.outfile_schnet, args.store_forces, 
+        args.store_std, args.single, args.sample,
+        args.castep)
