@@ -152,24 +152,32 @@ class Castep_MD_Convertor(Castep_Convertor):
         count = self.count_iterations() + 1 #NOTE +1 to include initial configuration before MD
 
         for _ in range(count):
-            #NOTE possibly add check_EOF() call here 
-            cell_positions, symbols = self.read_positions()
-            if self.check_EOF():
-                break
-            positions = [cell.dot(np.array(pos)) for pos in cell_positions]
-            if self.check_EOF():
-                break
-            forces = self.read_forces()
-            if self.check_EOF():
-                break
-            energy = self.read_energy()
-            if self.check_EOF():
-                break
-            atoms = ase.Atoms(symbols = symbols, positions=positions, cell=cell)
-            atoms.calc = SinglePointCalculator(atoms=atoms, energy=energy, forces=forces)
-            atoms.set_pbc((pbc, pbc, pbc))
-            traj.append(atoms)           
-            
+            try:
+
+                cell_positions, symbols = self.read_positions()
+
+                positions = [cell.dot(np.array(pos)) for pos in cell_positions]
+
+                forces = self.read_forces()
+
+                energy = self.read_energy()
+
+                atoms = ase.Atoms(symbols = symbols, positions=positions, cell=cell)
+                atoms.calc = SinglePointCalculator(atoms=atoms, energy=energy, forces=forces)
+                atoms.set_pbc((pbc, pbc, pbc))
+                traj.append(atoms)  
+
+            except (IndexError, EOFError) as err:
+                if type(err) is IndexError:
+                    while (line := self.file.readline()) is not None and \
+                     (re.search("Starting MD iteration", line) is None):
+                        pass
+
+                    continue
+                
+                elif type(err) is EOFError:
+                    break
+          
         return traj
 
     def read_energy(self):
@@ -198,12 +206,11 @@ class Castep_MD_Convertor(Castep_Convertor):
     
     def count_iterations(self) -> int:
         self.file.seek(0)
-        pattern = re.compile("finished MD iteration\s+([0-9]+)")
+        pattern = re.compile("finished MD iteration\s+([0-9]+)") #
         i = 0
         while (line := self.file.readline()):
-            x = pattern.search(line)
-            if x is not None:
-                i = int(x.group(1))
+            if pattern.search(line) is not None:
+                i += 1
         self.file.seek(0)
         return i
 
