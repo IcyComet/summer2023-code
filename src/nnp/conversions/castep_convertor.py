@@ -64,9 +64,6 @@ class Castep_Convertor(General_Convertor):
         self.read_till("Cell Contents")
         self.read_till_repeat('x')
         self.move(4)
-        
-        if self.check_EOF(): #TODO
-            raise EOFError
 
         positions = []
         symbols = []
@@ -138,7 +135,6 @@ class Castep_MD_Convertor(Castep_Convertor):
         """Reads the file and returns a list of ase.Atoms objects.
         TODO check if position of count_iterations() call affects output
         TODO decide the loop condition
-        TODO handle file ending in index error loop instead of with explicit EOFError
         """
         traj = []
         cell = self.read_cell()
@@ -160,15 +156,12 @@ class Castep_MD_Convertor(Castep_Convertor):
                 atoms.set_pbc((pbc, pbc, pbc))
                 traj.append(atoms)
 
-            except (IndexError, EOFError) as err: #TODO
-                if type(err) is IndexError:
-                    while (line := self.file.readline()) and \
-                     (re.search("Starting MD iteration", line) is None):
-                        pass
+            except IndexError:
+                while (line := self.file.readline()) and \
+                    (re.search("Starting MD iteration", line) is None):
+                    pass
 
-                    continue
-                
-                elif type(err) is EOFError:
+                if not line: #TODO decide if necessary once loop condition is chosen
                     break
           
         return traj
@@ -214,6 +207,7 @@ class Castep_SCF_Convertor(Castep_Convertor):
         file: file objected opened for reading
         max_iter (int): how long to keep looping through a file with unexpected outcome
             before ending the code. 
+    NOTE haven't used this class at all but modified behaviour of read_positions in superclass
     """
     
     def __init__(self, file: str, finite_set_correction: bool = False):
