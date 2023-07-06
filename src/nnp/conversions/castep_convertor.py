@@ -21,65 +21,61 @@ class Castep_Convertor(General_Convertor):
         self.file.seek(0)
 
         #  find the end of the fiel
-        self.file_size = self.find_EOF()
+        self.file_size = self.find_EOF() #TODO remove or replace with direct seek(0,2)
         self.file.seek(0)
 
     
     def read_cell(self):
         """Reads the unit cell from the file.
         """
-        self.read_till(['Unit', 'Cell'])
+        self.read_till("Unit Cell")
         
         self.move(2)
         mat = self.read_matrix()
         cell = mat[:, :3]
         return cell
 
-    def read_till(self, condition):
+    def read_till(self, string):
         """Reads the file line by line until the condition is found.
         """
-        line = self.file.readline().split()
-        
-        while  line !=  condition and not self.check_EOF():
-            line = self.file.readline().split()
+        while (line := self.file.readline()) and (re.fullmatch(string, line.strip()) is None):
+            pass
+        return
             
         
     def read_till_repeat(self, string):
         """Reads the file line by line until the condition is found.
         """
-        line = self.file.readline().strip()
-        
-        while  line != len(line)*string and not self.check_EOF():
-            line = self.file.readline().strip()
+        while (line := self.file.readline()) and (re.fullmatch(f"{string}{{{len(line.strip())}}}", line.strip()) is None):
+            pass
+        return
             
     def move(self, n: int):
         """Moves the file pointer n lines forward.
         """
         for _ in range(n):
-            dump = self.file.readline()
+            self.file.readline()
     
     def read_positions(self):
         """Reads the positions from the file.
         """
         
         # find the positions
-        self.read_till(['Cell', 'Contents'])
+        self.read_till("Cell Contents")
         self.read_till_repeat('x')
         self.move(4)
         
-        if self.check_EOF():
-            return None, None
+        if self.check_EOF(): #TODO
+            raise EOFError
 
         positions = []
         symbols = []
-        line  = self.file.readline().split()
-        
-        # read the positions
-        while line != [len(line[0])*'x'] and not self.check_EOF():
-            symbols.append(line[1])
-            positions.append([float(x) for x in line[3:6]])
-            line  = self.file.readline().split()
 
+        while (line := self.file.readline()) and (re.fullmatch("x+", line.strip()) is None):
+            words = line.split()
+            symbols.append(words[1])
+            positions.append([float(x) for x in words[3:6]])
+        
         self.move(1)
 
         return positions, symbols
@@ -89,17 +85,13 @@ class Castep_Convertor(General_Convertor):
         """
 
         # find the forces
-        stop_sign =['*','*']
         self.read_till_forces()
         self.move(5)
         
         forces = []
-        line  = self.file.readline().split()
         
-        # read the forces
-        while line != stop_sign and not self.check_EOF():
-            forces.append([float(x) for x in line[3:6]])
-            line  = self.file.readline().split()
+        while (line := self.file.readline()) and (re.fullmatch("\s*\*\s+\*\s*", line) is None):
+            forces.append([float(x) for x in line.split()[3:6]])
 
         self.move(2)
         
@@ -109,12 +101,10 @@ class Castep_Convertor(General_Convertor):
         """Reads the file line by line until forces are found.
         """
 
-        cont = True
-        while cont and not self.check_EOF():
-            line = self.file.readline().strip().split()
-            if len(line) == 3:            
-                if line == [len(line[0])*'*', 'Forces', len(line[2])*'*']:
-                    cont = False 
+        while (line := self.file.readline()) and \
+            (re.fullmatch("\*+ Forces \*+", line.strip()) is None):
+            pass
+        return
 
     def write(self, frame):
         return NotImplementedError
@@ -146,12 +136,15 @@ class Castep_MD_Convertor(Castep_Convertor):
 
     def read(self, pbc: bool = True) -> list:
         """Reads the file and returns a list of ase.Atoms objects.
+        TODO check if position of count_iterations() call affects output
+        TODO decide the loop condition
+        TODO handle file ending in index error loop instead of with explicit EOFError
         """
         traj = []
         cell = self.read_cell()
         count = self.count_iterations() + 1 #NOTE +1 to include initial configuration before MD
 
-        for _ in range(count):
+        while not self.check_EOF(): #TODO
             try:
 
                 cell_positions, symbols = self.read_positions()
@@ -165,11 +158,11 @@ class Castep_MD_Convertor(Castep_Convertor):
                 atoms = ase.Atoms(symbols = symbols, positions=positions, cell=cell)
                 atoms.calc = SinglePointCalculator(atoms=atoms, energy=energy, forces=forces)
                 atoms.set_pbc((pbc, pbc, pbc))
-                traj.append(atoms)  
+                traj.append(atoms)
 
-            except (IndexError, EOFError) as err:
+            except (IndexError, EOFError) as err: #TODO
                 if type(err) is IndexError:
-                    while (line := self.file.readline()) is not None and \
+                    while (line := self.file.readline()) and \
                      (re.search("Starting MD iteration", line) is None):
                         pass
 
@@ -196,13 +189,13 @@ class Castep_MD_Convertor(Castep_Convertor):
     def find_EOF(self):
         """Find the end of the file.
         """
-        #FIXME
-        pattern = re.compile("finished MD iteration")
-        i = 0
-        while (line := self.file.readline()):
-            if pattern.search(line) is not None:
-                i = self.file.tell()
-        return i
+        # pattern = re.compile("finished MD iteration")
+        # i = 0
+        # while (line := self.file.readline()):
+        #     if pattern.search(line) is not None:
+        #         i = self.file.tell()
+        # return i
+        return self.file.seek(0,2)
     
     def count_iterations(self) -> int:
         self.file.seek(0)
