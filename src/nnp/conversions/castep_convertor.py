@@ -156,9 +156,10 @@ class Castep_MD_Convertor(Castep_Convertor):
                 atoms.set_pbc((pbc, pbc, pbc))
                 traj.append(atoms)
 
-            except IndexError:
+            except (UnboundLocalError, IndexError):
+                
                 while (line := self.file.readline()) and \
-                    (re.search("Starting MD iteration", line) is None):
+                    (re.search("(Starting MD iteration)|(Unit Cell)", line) is None):
                     pass
 
                 if not line: #TODO decide if necessary once loop condition is chosen
@@ -169,15 +170,18 @@ class Castep_MD_Convertor(Castep_Convertor):
     def read_energy(self):
         """Reads the energy from the file.
         """
-        # find the energy
-        self.read_till_repeat('x')
-        self.move(4)
+        # # find the energy
+        # self.read_till_repeat('x')
+        # self.move(4)
 
-        # read the energy
-        energy = float(self.file.readline().split()[3])
-        self.read_till_repeat('x')
-        self.move(1)
-        return energy
+        # # read the energy
+        # energy = float(self.file.readline().split()[3])
+        # self.read_till_repeat('x')
+        # self.move(1)
+        pattern = re.compile("Potential Energy: (\-?\d+\.\d+)")
+        while (line := self.file.readline()) and (x := pattern.search(line)) is None:
+            pass
+        return float(x.group(1))
     
     def find_EOF(self):
         """Find the end of the file.
