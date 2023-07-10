@@ -28,27 +28,14 @@ class Castep_Convertor(General_Convertor):
     def read_cell(self):
         """Reads the unit cell from the file.
         """
-        self.read_till("Unit Cell")
+        while (line := self.file.readline()) and (re.fullmatch("Unit Cell", line.strip()) is None):
+            pass
         
         self.move(2)
         mat = self.read_matrix()
         cell = mat[:, :3]
         return cell
-
-    def read_till(self, string):
-        """Reads the file line by line until the condition is found.
-        """
-        while (line := self.file.readline()) and (re.fullmatch(string, line.strip()) is None):
-            pass
-        return
-            
-        
-    def read_till_repeat(self, string):
-        """Reads the file line by line until the condition is found.
-        """
-        while (line := self.file.readline()) and (re.fullmatch(f"{string}{{{len(line.strip())}}}", line.strip()) is None):
-            pass
-        return
+    
             
     def move(self, n: int):
         """Moves the file pointer n lines forward.
@@ -61,9 +48,9 @@ class Castep_Convertor(General_Convertor):
         """
         
         # find the positions
-        self.read_till("Cell Contents")
-        self.read_till_repeat('x')
-        self.move(4)
+        while (line := self.file.readline()) and (re.search("Fractional coordinates of atoms", line) is None):
+            pass
+        self.move(2)
 
         positions = []
         symbols = []
@@ -170,14 +157,7 @@ class Castep_MD_Convertor(Castep_Convertor):
     def read_energy(self):
         """Reads the energy from the file.
         """
-        # # find the energy
-        # self.read_till_repeat('x')
-        # self.move(4)
 
-        # # read the energy
-        # energy = float(self.file.readline().split()[3])
-        # self.read_till_repeat('x')
-        # self.move(1)
         pattern = re.compile("Potential Energy: (\-?\d+\.\d+)")
         while (line := self.file.readline()) and (x := pattern.search(line)) is None:
             pass
