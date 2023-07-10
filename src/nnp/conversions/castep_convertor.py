@@ -11,8 +11,6 @@ class Castep_Convertor(General_Convertor):
     """General class to be inherited by readers of Castep output files.
     Parameters: 
         file: file objected opened for reading
-        max_iter (int): how long to keep looping through a file with unexpected outcome
-            before ending the code.
     """
 
     def __init__(self, file):
@@ -21,7 +19,7 @@ class Castep_Convertor(General_Convertor):
         self.file.seek(0)
 
         #  find the end of the fiel
-        self.file_size = self.find_EOF() #TODO remove or replace with direct seek(0,2)
+        self.file_size = self.file.seek(0,2)
         self.file.seek(0)
 
     
@@ -60,8 +58,6 @@ class Castep_Convertor(General_Convertor):
             symbols.append(words[1])
             positions.append([float(x) for x in words[3:6]])
         
-        self.move(1)
-
         return positions, symbols
     
     def read_forces(self):
@@ -69,46 +65,30 @@ class Castep_Convertor(General_Convertor):
         """
 
         # find the forces
-        self.read_till_forces()
+        while (line := self.file.readline()) and \
+            (re.fullmatch("\*+ Forces \*+", line.strip()) is None):
+            pass
         self.move(5)
         
         forces = []
         
         while (line := self.file.readline()) and (re.fullmatch("\s*\*\s+\*\s*", line) is None):
             forces.append([float(x) for x in line.split()[3:6]])
-
-        self.move(2)
         
         return forces
     
-    def read_till_forces(self):
-        """Reads the file line by line until forces are found.
-        """
-
-        while (line := self.file.readline()) and \
-            (re.fullmatch("\*+ Forces \*+", line.strip()) is None):
-            pass
-        return
-
-    def write(self, frame):
-        return NotImplementedError
-    
-    def fill_atom(self, frame, forces, i, name):
-        return NotImplementedError
-
-    def find_EOF(self):
-        return NotImplementedError
     
     def check_EOF(self):
         return self.file.tell() >= self.file_size
+    
+    def read_energy(self):
+        raise NotImplementedError
 
 
 class Castep_MD_Convertor(Castep_Convertor):
     """Class for reading of Castep MD output files.
     Parameters: 
         file: file objected opened for reading
-        max_iter (int): how long to keep looping through a file with unexpected outcome
-            before ending the code. 
     """
 
     def __init__(
@@ -143,7 +123,7 @@ class Castep_MD_Convertor(Castep_Convertor):
                 atoms.set_pbc((pbc, pbc, pbc))
                 traj.append(atoms)
 
-            except (UnboundLocalError, IndexError):
+            except (UnboundLocalError, IndexError, ValueError):
                 
                 while (line := self.file.readline()) and \
                     (re.search("(Starting MD iteration)|(Unit Cell)", line) is None):
@@ -163,16 +143,6 @@ class Castep_MD_Convertor(Castep_Convertor):
             pass
         return float(x.group(1))
     
-    def find_EOF(self):
-        """Find the end of the file.
-        """
-        # pattern = re.compile("finished MD iteration")
-        # i = 0
-        # while (line := self.file.readline()):
-        #     if pattern.search(line) is not None:
-        #         i = self.file.tell()
-        # return i
-        return self.file.seek(0,2)
     
     def count_iterations(self) -> int:
         self.file.seek(0)
@@ -189,8 +159,6 @@ class Castep_SCF_Convertor(Castep_Convertor):
     """Class for reading of Castep scf output files.
     Parameters: 
         file: file objected opened for reading
-        max_iter (int): how long to keep looping through a file with unexpected outcome
-            before ending the code. 
     NOTE haven't used this class at all but modified behaviour of read_positions in superclass
     """
     
@@ -245,6 +213,3 @@ class Castep_SCF_Convertor(Castep_Convertor):
 
         energy = float(line[-2])
         return energy
-
-    def find_EOF(self):
-        return self.file.seek(0, 2)
