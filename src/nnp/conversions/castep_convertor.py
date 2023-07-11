@@ -6,7 +6,7 @@ import re
 
 from .general_convertor import General_Convertor
    
-
+#TODO review the class hierarchy for possible restructuring
 class Castep_Convertor(General_Convertor):
     """General class to be inherited by readers of Castep output files.
     Parameters: 
@@ -21,7 +21,10 @@ class Castep_Convertor(General_Convertor):
         #  find the end of the fiel
         self.file_size = self.file.seek(0,2)
         self.file.seek(0)
-
+        return
+    
+    class NextMDIterationError(Exception):
+        """Unexpectedly encountered the start of the next MD iteration"""
     
     def read_cell(self):
         """Reads the unit cell from the file.
@@ -34,7 +37,6 @@ class Castep_Convertor(General_Convertor):
         cell = mat[:, :3]
         return cell
     
-            
     def move(self, n: int):
         """Moves the file pointer n lines forward.
         """
@@ -67,7 +69,10 @@ class Castep_Convertor(General_Convertor):
         # find the forces
         while (line := self.file.readline()) and \
             (re.fullmatch("\*+ Forces \*+", line.strip()) is None):
-            pass
+
+            if re.search("Starting MD iteration", line) is not None:
+                raise self.NextMDIterationError()
+        
         self.move(5)
         
         forces = []
@@ -76,7 +81,6 @@ class Castep_Convertor(General_Convertor):
             forces.append([float(x) for x in line.split()[3:6]])
         
         return forces
-    
     
     def check_EOF(self):
         return self.file.tell() >= self.file_size
@@ -100,12 +104,10 @@ class Castep_MD_Convertor(Castep_Convertor):
 
     def read(self, pbc: bool = True) -> list:
         """Reads the file and returns a list of ase.Atoms objects.
-        TODO check if position of count_iterations() call affects output
         TODO decide the loop condition
         """
         traj = []
         cell = self.read_cell()
-        count = self.count_iterations() + 1 #NOTE +1 to include initial configuration before MD
 
         while not self.check_EOF(): #TODO
             try:
@@ -123,14 +125,24 @@ class Castep_MD_Convertor(Castep_Convertor):
                 atoms.set_pbc((pbc, pbc, pbc))
                 traj.append(atoms)
 
+                """NOTE this is an alternative way to ensure only MD iterations are read after
+                the initial configuration (restarts don't include energy!) but exception handling
+                has to be done anyway so this is redundant."""
+                # while (line := self.file.readline()) and \
+                #     (re.search("Starting MD iteration", line) is None):
+                #     pass
+
             except (UnboundLocalError, IndexError, ValueError):
                 
                 while (line := self.file.readline()) and \
-                    (re.search("(Starting MD iteration)|(Unit Cell)", line) is None):
+                    (re.search("Starting MD iteration", line) is None):
                     pass
 
                 if not line: #TODO decide if necessary once loop condition is chosen
                     break
+            
+            except(self.NextMDIterationError):
+                continue
           
         return traj
 
@@ -140,11 +152,16 @@ class Castep_MD_Convertor(Castep_Convertor):
 
         pattern = re.compile("Potential Energy: (\-?\d+\.\d+)")
         while (line := self.file.readline()) and (x := pattern.search(line)) is None:
-            pass
+            
+            if re.search("Starting MD iteration", line) is not None:
+                raise self.NextMDIterationError()
+        
         return float(x.group(1))
     
     
     def count_iterations(self) -> int:
+        """Counts the number of completed MD iterations in the file.
+        i+1 is the expected number of Atoms objects including initial configuration."""
         self.file.seek(0)
         pattern = re.compile("finished MD iteration\s+([0-9]+)") #
         i = 0
