@@ -2,7 +2,7 @@
 
 import sys
 
-sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/mphys_code/src')
+sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/summer2023-code/src')
 
 import argparse
 import numpy as np
@@ -12,7 +12,7 @@ import fps
 
 def main(file, test_size):
     
-    name = file.strip('npz')[:-1]
+    name = file.removesuffix(".npz")
     
     DM = fps.get_DM(file, test_size) 
     perm, lam = fps.getGreedyPerm(DM)

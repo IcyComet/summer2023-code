@@ -11,6 +11,8 @@ class Castep_Convertor(General_Convertor):
     """General class to be inherited by readers of Castep output files.
     Parameters: 
         file: file objected opened for reading
+    NOTE set errors="replace" when opening files or catch UnicodeDecodeErrors.
+    UnicodeDecodeError checks need to happen before ValueError if they are handled differently.
     """
 
     def __init__(self, file):
@@ -124,13 +126,9 @@ class Castep_MD_Convertor(Castep_Convertor):
                 atoms.calc = SinglePointCalculator(atoms=atoms, energy=energy, forces=forces)
                 atoms.set_pbc((pbc, pbc, pbc))
                 traj.append(atoms)
-
-                """NOTE this is an alternative way to ensure only MD iterations are read after
-                the initial configuration (restarts don't include energy!) but exception handling
-                has to be done anyway so this is redundant."""
-                # while (line := self.file.readline()) and \
-                #     (re.search("Starting MD iteration", line) is None):
-                #     pass
+            
+            # except UnicodeDecodeError: # Needs to be caught before ValueError
+            #     break
 
             except (UnboundLocalError, IndexError, ValueError):
                 

@@ -15,7 +15,7 @@ def convert(castep_file: str, scf: bool = False, pbc: bool = True,
             finite_set_correction: bool = True):
     
     Conv = Castep_SCF_Convertor if scf else Castep_MD_Convertor 
-    with open(castep_file, "r") as file:
+    with open(castep_file, "r", errors="replace") as file:
         reader = Conv(file, finite_set_correction=finite_set_correction)
         return reader.read(pbc=pbc)
 

@@ -21,7 +21,7 @@ def convert(files: list,
     traj = []
 
     for filname in files:
-        with open(filname, 'r') as file:
+        with open(filname, 'r', errors="replace") as file:
             reader = Conv(file, finite_set_correction=finite_set_correction)
             traj += reader.read(pbc=pbc)
     

@@ -8,7 +8,7 @@ from nnp.conversions.castep_convertor import Castep_MD_Convertor
 
 def main(filelist:list, pbc:bool=True, finite_set_correction:bool=True):
     for filename in filelist:
-        with open(filename, "r") as file:
+        with open(filename, "r", errors="replace") as file:
             traj = Castep_MD_Convertor(file, finite_set_correction=finite_set_correction).read(pbc=pbc)
             print(f"Result of converting {filename.split(sep='/')[-1]} to ASE:")
             print(f"Number of Atoms objects in trajectory: {len(traj)}")
