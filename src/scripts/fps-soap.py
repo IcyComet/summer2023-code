@@ -27,7 +27,7 @@ def plot_FPS(lam, name):
     plt.plot(lam[1:])
     plt.yscale('log')
     
-    plt.title('Furtherst Point Sampling')
+    plt.title('Furthest Point Sampling')
     plt.ylabel('Furthest distance')
     plt.xlabel('Number of points')
     

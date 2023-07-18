@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 
 import argparse
-
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib 
 
 from ase.io import read, write
+from ase.db import connect
+
+import sys
+sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/summer2023-code/src')
+from scripts.castep2soap import convert # Function for reading Atoms objects from castep files
 
 font = {'family' : 'normal',
         'weight' : 'bold',
@@ -28,15 +33,28 @@ def main(fil, fn_perm, outfile, distance, n_structures):
     
     idx_selected = perm[:n_structures].astype(int)
 
-    print('{}: {:d} geometries selcted with {} maximum distance.'.format(
-        name, n_structures, lam[n_structures]))
+    #NOTE Should be minimum not maximum?
+    print(f"{name}: {n_structures:d} geometries selected with {lam[n_structures]} maximum distance")
 
-    data = read(fil, ':{:d}'.format(len(perm)))     
-    data_selected = [data[idx] for idx in idx_selected]
-
-    write(outfile, data_selected, append=True)
-
-    #plot_selected_energies(data, idx_selected, name)
+    if fil.endswith(".db"):
+        data = [connect(fil, type="db").select()]
+        data_selected = [data[idx] for idx in idx_selected]
+        with connect(outfile, type="db") as db:
+            for row in data_selected:
+                db.write(row.toatoms(), data=row.data)
+    else:
+        assert(fil.endswith(".castep")) # For testing purposes
+        data = convert(fil)
+        
+        details = re.search("(CH[0-9]).*?([0-9]+)gpa.*?([0-9]+)K", fil) #info values
+        assert(details is not None) # FIXME testing
+        info = {"structure":details[1], "gpa":int(details[2]), "kelvin":int(details[3])}
+        data_selected = [data[idx] for idx in idx_selected]
+        with connect(outfile, type="db") as db: # FIXME use try-except and sleep when locked
+            for atoms in data_selected:
+                db.write(atoms, data=info)
+    
+    return
 
 
 def plot_selected_energies(data, idx_selected, name='', timestep = .5):
