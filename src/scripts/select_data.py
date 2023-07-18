@@ -5,8 +5,6 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib 
-
-from ase.io import read, write
 from ase.db import connect
 
 import sys
@@ -36,25 +34,36 @@ def main(fil, fn_perm, outfile, distance, n_structures):
     #NOTE Should be minimum not maximum?
     print(f"{name}: {n_structures:d} geometries selected with {lam[n_structures]} maximum distance")
 
+    """NOTE don't try to parallelise with & in bash because it leads to sqlite3.OperationalErrors 
+    (trying to connnect to locked files)"""
+    
     if fil.endswith(".db"):
         data = [connect(fil, type="db").select()]
         data_selected = [data[idx] for idx in idx_selected]
-        with connect(outfile, type="db") as db:
-            for row in data_selected:
-                db.write(row.toatoms(), data=row.data)
-    else:
-        assert(fil.endswith(".castep")) # For testing purposes
+        write_from_db(outfile, data_selected)
+    elif fil.endswith(".castep"):
         data = convert(fil)
         
         details = re.search("(CH[0-9]).*?([0-9]+)gpa.*?([0-9]+)K", fil) #info values
-        assert(details is not None) # FIXME testing
+        assert(details is not None)
         info = {"structure":details[1], "gpa":int(details[2]), "kelvin":int(details[3])}
         data_selected = [data[idx] for idx in idx_selected]
-        with connect(outfile, type="db") as db: # FIXME use try-except and sleep when locked
-            for atoms in data_selected:
-                db.write(atoms, data=info)
+        write_from_castep(outfile, data_selected, info)
+    
+    else:
+        raise ValueError("Filename does not end in .db or .castep")
     
     return
+
+def write_from_castep(outfile, data_selected, info):
+    with connect(outfile, type="db") as db:
+        for atoms in data_selected:
+            db.write(atoms, data=info)
+
+def write_from_db(outfile, data_selected):
+    with connect(outfile, type="db") as db:
+        for row in data_selected:
+            db.write(row.toatoms(), data=row.data)
 
 
 def plot_selected_energies(data, idx_selected, name='', timestep = .5):
