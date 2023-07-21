@@ -2,6 +2,7 @@
 
 import argparse
 import re
+import sparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib 
@@ -31,8 +32,7 @@ def main(fil, fn_perm, outfile, distance, n_structures):
     
     idx_selected = perm[:n_structures].astype(int)
 
-    #NOTE Should be minimum not maximum?
-    print(f"{name}: {n_structures:d} geometries selected with {lam[n_structures]} maximum distance")
+    print(f"{name}: {n_structures:d} geometries selected with {lam[n_structures-1]} minimum distance")
 
     """NOTE don't try to parallelise with & in bash because it leads to sqlite3.OperationalErrors 
     (trying to connnect to locked files)"""
@@ -48,17 +48,32 @@ def main(fil, fn_perm, outfile, distance, n_structures):
         assert(details is not None)
         info = {"structure":details[1], "gpa":int(details[2]), "kelvin":int(details[3])}
         data_selected = [data[idx] for idx in idx_selected]
-        write_from_castep(outfile, data_selected, info)
+        soap_selected = read_soap(fn_perm, idx_selected, data)
+        write_from_castep(outfile, data_selected, info, soap_selected)
     
     else:
         raise ValueError("Filename does not end in .db or .castep")
     
     return
 
-def write_from_castep(outfile, data_selected, info):
+def read_soap(fn_perm, idx_selected, data):
+    try:
+        soapdata = sparse.load_npz(fn_perm.replace("-perm.npy", ".npz"))
+        assert(soapdata.shape[0] == len(data))
+        soap_selected = soapdata[idx_selected]
+        assert(soap_selected.shape == (len(idx_selected),soapdata.shape[1]))
+    except FileNotFoundError as fe:
+        raise FileNotFoundError("Error: could not find corresponding .npz file in the directory of the perm file") \
+            from fe
+        
+    return soap_selected
+
+def write_from_castep(outfile, data_selected, info, soap_selected : sparse.COO):
+    ds = [info | {"soap": vector.todense()} for vector in soap_selected]
+    assert(len(data_selected) == len(ds))
     with connect(outfile, type="db") as db:
-        for atoms in data_selected:
-            db.write(atoms, data=info)
+        for (atoms, vals) in zip(data_selected, ds):
+            db.write(atoms, data=vals)
 
 def write_from_db(outfile, data_selected):
     with connect(outfile, type="db") as db:
