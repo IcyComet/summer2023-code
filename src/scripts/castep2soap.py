@@ -20,10 +20,10 @@ def convert(castep_file: str, scf: bool = False, pbc: bool = True,
         return reader.read(pbc=pbc)
 
 def main(infile: str, outfile: str, scf: bool = False, pbc: bool = True,
-         finite_set_correction: bool = True):
+         finite_set_correction: bool = True, average = "inner", sparse=True):
     
     data = convert(infile, scf, pbc, finite_set_correction)
-    soap_data = fps.calculate_soap(data)    
+    soap_data = fps.calculate_soap(data, average=average, sparse=sparse)    
     sparse.save_npz(outfile, soap_data)
     return
 
@@ -40,7 +40,10 @@ if __name__=='__main__':
         help='Don\'t use pbc')
     parser.add_argument('-f', '--finite_set_correction', action='store_true',
         help='Use if no finite set correction was used in the calculation') 
-    
+    parser.add_argument("-a", "--average", type=str, default="inner", \
+                        help="Averaging of SOAP vectors. Options are 'inner' (default), 'outer', and 'off'")
+    parser.add_argument("-d", "--dense", action="store_true", help="Output SOAP as numpy array instead of sparse")
     
     args = parser.parse_args()
-    main(args.infile, args.outfile, args.scf, (not args.vacuum), (not args.finite_set_correction))
+    main(args.infile, args.outfile, args.scf, (not args.vacuum), (not args.finite_set_correction), \
+         average = args.average, sparse = not args.dense)
