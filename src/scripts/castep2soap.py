@@ -7,6 +7,7 @@ sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/summer2023-code/sr
 
 import argparse
 import sparse as sp
+import numpy as np
 from nnp.conversions.castep_convertor import Castep_SCF_Convertor, Castep_MD_Convertor
 
 import fps
@@ -23,8 +24,11 @@ def main(infile: str, outfile: str, scf: bool = False, pbc: bool = True,
          finite_set_correction: bool = True, average = "inner", sparse=True):
     
     data = convert(infile, scf, pbc, finite_set_correction)
-    soap_data = fps.calculate_soap(data, average=average, sparse=sparse)    
-    sp.save_npz(outfile, soap_data)
+    soap_data = fps.calculate_soap(data, average=average, sparse=sparse)
+    try:    
+        sp.save_npz(outfile, soap_data)
+    except AttributeError:
+        np.save(outfile, soap_data)
     return
 
 if __name__=='__main__':
