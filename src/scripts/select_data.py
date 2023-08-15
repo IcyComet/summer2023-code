@@ -38,13 +38,14 @@ def main(fil, fn_perm, outfile, distance, n_structures):
     (trying to connnect to locked files)"""
     
     if fil.endswith(".db"):
-        data = [connect(fil, type="db").select()]
+        with connect(fil, type="db") as db:
+            data = [row for row in db.select()]
         data_selected = [data[idx] for idx in idx_selected]
         write_from_db(outfile, data_selected)
     elif fil.endswith(".castep"):
         data = convert(fil)
         
-        details = re.search("(CH[0-9]).*?([0-9]+)gpa.*?([0-9]+)K", fil) #info values
+        details = re.search("(C?H[0-9]).*?([0-9]+)gpa.*?([0-9]+)K", fil) #info values
         assert(details is not None)
         info = {"structure":details[1], "gpa":int(details[2]), "kelvin":int(details[3])}
         data_selected = [data[idx] for idx in idx_selected]
@@ -112,19 +113,14 @@ if __name__=='__main__':
     parser.add_argument('infile', type=str, help='Original data')
     parser.add_argument('permfile', type=str, help='.npy file with permutations')
     parser.add_argument('outfile', type=str)
-    parser.add_argument('-d', '--distance', type = float, required=False, default=None,
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-d', '--distance', type = float, default=None,
      help='What distance should be between point at the cuttof')
-    parser.add_argument('-n', '--nstructures', type=int, required=False, default=None,
+    group.add_argument('-n', '--nstructures', type=int, default=None,
      help='How many structures to use. Either this or the distance parameter should be selected')
 
 
     args = parser.parse_args()
-    selection_bad = ((args.distance is None and args.nstructures is None) or 
-                    (args.distance is not None and args.nstructures is not None))
-    
-    if selection_bad:
-        print('Please select either distance or the nstructures options, but not both')
-        parser.print_help()
-        exit()
+    assert((args.distance is None) != (args.nstructures is None)) #For testing purposes
 
     main(args.infile, args.permfile, args.outfile, args.distance, args.nstructures)

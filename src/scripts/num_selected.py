@@ -6,8 +6,11 @@ from glob import glob
 from os.path import isdir, isfile
 
 def main(pathstring: str, distance: float, nstructures: int):
-    files = glob("**/*-lam.npy", root_dir=pathstring, recursive=True) if isdir(pathstring) else [pathstring]
-    assert(all(map(isfile, files)))
+    files = glob(pathstring.removesuffix("/") + "/**/*-lam.npy", recursive=True) if isdir(pathstring) else [pathstring]
+    try:
+        assert(all(map(isfile, files)))
+    except AssertionError as e:
+        raise AssertionError(f"Nonfiles: {[f for f in files if not isfile(f)]}") from e
     print(f"Number of files found: {len(files)}")
     if nstructures is not None:
         count = nstructures * len(files)
