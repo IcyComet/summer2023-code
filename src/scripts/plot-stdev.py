@@ -14,7 +14,7 @@ def main(stdevfile, fpsfile, outfile):
     except KeyError:
         vecs = vectors["outer"]
     sigmas = np.linalg.norm(vecs, axis=1)
-    sigma_ranks = np.argsort(sigmas)[::-1] #FIXME?
+    sigma_ranks = np.argsort(sigmas)[::-1]
     traj_fps, traj_sigmas = ranks_to_indices(fps_ranks), ranks_to_indices(sigma_ranks)
     spearman = stats.spearmanr(traj_fps, traj_sigmas)
     correlation, p_value = spearman.statistic, spearman.pvalue
@@ -25,7 +25,7 @@ def main(stdevfile, fpsfile, outfile):
     present = lambda s: s.replace("_", " ").replace("gpa", "GPa")
     ax1.set_title(f"{present(composition)} FPS and Standard Deviation Ranks")
     fig.text(0, 0, f"Spearman rank\ncorrelation coefficient: {correlation:.3}", in_layout=True,\
-             ha="left", va="bottom")
+             ha="left", va="bottom") #\np-value: {p_value:.3}
     ax2.plot(sigmas, "k-", linewidth=0.5, zorder=1)
     cutoff = 100
     sc = ax2.scatter(fps_ranks[:cutoff], sigmas[fps_ranks[:cutoff]], c=np.arange(cutoff), cmap="plasma",\
@@ -39,7 +39,7 @@ def main(stdevfile, fpsfile, outfile):
     fig.savefig(outfile)
     return
 
-def ranks_to_indices(ranked):
+def ranks_to_indices(ranked): #FIXME
     indexed = np.zeros_like(ranked)
     indexed[ranked] = np.arange(np.size(ranked))
     return indexed

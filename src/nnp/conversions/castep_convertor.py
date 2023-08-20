@@ -5,8 +5,7 @@ from ase.calculators.singlepoint import SinglePointCalculator
 import re
 
 from .general_convertor import General_Convertor
-   
-#TODO review the class hierarchy for possible restructuring
+
 class Castep_Convertor(General_Convertor):
     """General class to be inherited by readers of Castep output files.
     Parameters: 
@@ -106,12 +105,11 @@ class Castep_MD_Convertor(Castep_Convertor):
 
     def read(self, pbc: bool = True) -> list:
         """Reads the file and returns a list of ase.Atoms objects.
-        TODO decide the loop condition
         """
         traj = []
         cell = self.read_cell()
 
-        while not self.check_EOF(): #TODO
+        while not self.check_EOF():
             try:
 
                 cell_positions, symbols = self.read_positions()
@@ -123,8 +121,8 @@ class Castep_MD_Convertor(Castep_Convertor):
                 energy = self.read_energy()
 
                 atoms = ase.Atoms(symbols = symbols, positions=positions, cell=cell)
-                atoms.calc = SinglePointCalculator(atoms=atoms, energy=energy, forces=forces)
                 atoms.set_pbc((pbc, pbc, pbc))
+                atoms.calc = SinglePointCalculator(atoms=atoms, energy=energy, forces=forces)
                 traj.append(atoms)
             
             # except UnicodeDecodeError: # Needs to be caught before ValueError
@@ -136,7 +134,7 @@ class Castep_MD_Convertor(Castep_Convertor):
                     (re.search("Starting MD iteration", line) is None):
                     pass
 
-                if not line: #TODO decide if necessary once loop condition is chosen
+                if not line:
                     break
             
             except(self.NextMDIterationError):
