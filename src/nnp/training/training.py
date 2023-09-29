@@ -2,10 +2,10 @@
 
 import torch
 import torchmetrics
-import torch.nn.functional as F
 
 import pytorch_lightning as pl
 from pytorch_lightning.strategies import DDPStrategy
+from pytorch_lightning.callbacks import LearningRateMonitor, LearningRateFinder
 
 
 import schnetpack as spk
@@ -27,9 +27,11 @@ def get_trainer(
     
      
     #logger = pl.loggers.TensorBoardLogger(save_dir='./')
-    logger = pl.loggers.CSVLogger(save_dir='./', flush_logs_every_n_steps=1000)
+    logger = pl.loggers.csv_logs.CSVLogger(save_dir='./', flush_logs_every_n_steps=1000)
 
     callbacks = [
+        # LearningRateFinder(early_stop_threshold=None, min_lr=1e-6, max_lr=0.1),
+        LearningRateMonitor(logging_interval="epoch"),
         spk.train.ModelCheckpoint(
             model_path="best_inference_model",
             save_top_k=1,
@@ -46,7 +48,6 @@ def get_trainer(
         accelerator = device,
         devices=n_cpu,
         #strategy=strategy,
-        auto_lr_find = True,
         enable_progress_bar = False,
     )
     
@@ -96,9 +97,9 @@ def get_transforms(dir_nl_cache, cutoff):
 def get_task(cutoff, 
             n_layers, 
             n_hidden, 
-            n_interacions, 
+            n_interactions, 
             n_features, 
-            n_guassians, 
+            n_gaussians, 
             rho, 
             learning_rate, 
             postprocess, 
@@ -109,9 +110,9 @@ def get_task(cutoff,
 
     pairwise_distance = spk.atomistic.PairwiseDistances() # calculates pairwise distances between atoms
 
-    radial_basis = spk.nn.GaussianRBF(n_rbf=n_guassians, cutoff=cutoff)
+    radial_basis = spk.nn.GaussianRBF(n_rbf=n_gaussians, cutoff=cutoff)
     schnet = spk.representation.SchNet(
-        n_atom_basis=n_features, n_interactions=n_interacions,
+        n_atom_basis=n_features, n_interactions=n_interactions,
         radial_basis=radial_basis,
         cutoff_fn=spk.nn.CosineCutoff(cutoff)
     )
@@ -150,7 +151,10 @@ def get_task(cutoff,
         model=nnpot,
         outputs=[output_energy, output_forces],
         optimizer_cls=torch.optim.AdamW,
-        optimizer_args={"lr": learning_rate}
+        optimizer_args={"lr": learning_rate},
+        scheduler_cls=spk.train.ReduceLROnPlateau,
+        scheduler_args={"factor": 0.25},
+        scheduler_monitor="val_loss"
     )
     
     return task

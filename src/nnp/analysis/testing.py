@@ -101,9 +101,14 @@ def get_schnet_data(
     return energies_schnet_mean,forces_schnet_mean
 
 def load_model_commitee(dir_model):
-    fmt_model = dir_model + 'train-{:03d}/best_inference_model'
-    fn_models = [fmt_model.format(i) for i in range(4)]
-    models = [get_calculator(fn_mod) for fn_mod in fn_models]
+    try:
+        fmt_model = dir_model + 'train-{:03d}/best_inference_model'
+        fn_models = [fmt_model.format(i) for i in range(4)]
+        models = [get_calculator(fn_mod) for fn_mod in fn_models]
+    except FileNotFoundError:
+        activations = ["silu", "softplus", "sigmoid", "tanh"]
+        model_paths = map(lambda x: dir_model + f"train-{x}/best_inference_model", activations)
+        models = [get_calculator(model_path) for model_path in model_paths]
     return models
 
 def seperation_energy(

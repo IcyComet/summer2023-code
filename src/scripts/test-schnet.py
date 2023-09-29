@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys 
-sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/mphys-code/src')
+sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/summer2023-code/src')
 
 import argparse
 
@@ -80,9 +80,9 @@ def test_model(fn_ref: str,
     forces_schnet_std = None
     
     if read_castep:
-        with open(fn_ref, 'rb') as f:
+        with open(fn_ref, 'r', errors="replace") as f:
             reader = Castep_MD_Convertor(f)
-            data = reader.read(pbc = True, )[::sample]
+            data = reader.read(pbc = True)[::sample]
     else:
         data = read(fn_ref, index = ':')[::sample]
 

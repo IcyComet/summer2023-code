@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import sys 
-sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/mphys-code/src')
-
+sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/summer2023-code/src')
+from os.path import isfile
 import argparse
 from ase.io import read
 from nnp import md
@@ -17,12 +17,14 @@ def main(init_geo: str,
         restart: bool = False, 
         soft_restart: bool = False,
         rescale_velocities: bool = False,
-        init_temperature: float = None):
+        init_temperature: float = None,
+        outfile: str = "simulation",
+        time_step: float = 0.5):
     
     n_replicas = 1
 
     time_constant = 100 # fs
-    time_step = .5 # fs
+    # time_step = .5 # fs
 
     cutoff = 4 # A
     shell= 1 # A
@@ -31,16 +33,20 @@ def main(init_geo: str,
     if n_potentials != 1:
         fmt_models = dir_models+'train-{:03d}/best_inference_model'
         fn_models = [fmt_models.format(i) for i in range(n_potentials) if i not in exclude_models]
+        if not all(map(isfile, fn_models)):
+            activations = ["silu", "sigmoid", "softplus", "tanh"]
+            fn_models = [dir_models.removesuffix("/") + f"/train-{activation}/best_inference_model" for \
+                         activation in activations]
     
 
     device = 'cpu'
     
-    log_file = 'simulation.hdf5'
+    log_file = f'{outfile}.hdf5'
     
     if restart:
-        log_file = 'simulation_restart.hdf5'
+        log_file = f'{outfile}_restart.hdf5'
 
-    chk_file = 'simulation.chk'
+    chk_file = f'{outfile}.chk'
     buffer_size = 1 # how many steps to store in memory before writing to disk
     
     atoms = read(init_geo, '0')
@@ -93,6 +99,8 @@ if __name__ == '__main__':
                         help='Rescale velocities to current temperature when restartin (default: False)')
     parser.add_argument('-i', '--init_temperature', type=float, default=None,
                         help='Initial temperature if none is given use temperature instead (default: None)')
+    parser.add_argument("-o", "--outfile", type=str, default="simulation", help="name of the output files (don't include file ending)")
+    parser.add_argument("-fs", "--timestep", type=float, default=0.5)
 
     
     args = parser.parse_args()
@@ -107,4 +115,6 @@ if __name__ == '__main__':
         args.restart, 
         args.soft_restart, 
         args.rescale_velocities, 
-        args.init_temperature)
+        args.init_temperature,
+        args.outfile,
+        args.timestep)

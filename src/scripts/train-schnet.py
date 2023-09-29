@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import sys
-sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/mphys-code/src')
+sys.path.append('/storage/cmstore01/projects/Hydrocarbons/opt/summer2023-code/src')
 
 from pytorch_lightning.strategies import DDPStrategy
 from nnp.training.training import * 
 import argparse
-
+from pytorch_lightning.tuner import Tuner
 
 def main(fn_db: str, epochs: int, activation: str, n_cpu_data: int, n_cpu_train: int, cutoff: float, batch_size: int = 1, checkpoint: str = None):
     
@@ -24,9 +24,9 @@ def main(fn_db: str, epochs: int, activation: str, n_cpu_data: int, n_cpu_train:
     ## Model Settings
     n_layers = 2  # Number of dense layers
     n_hidden = 20  # Size of the hidden layers
-    n_interacions = 3
+    n_interactions = 3
     n_features = 128
-    n_guassians = 25
+    n_gaussians = 25
 
     # Train settings
     rho = .1  # tradeoff parameter for loss function
@@ -42,20 +42,20 @@ def main(fn_db: str, epochs: int, activation: str, n_cpu_data: int, n_cpu_train:
         n_cpu_data,
         batch_size, 
         transforms
-    )      
-    
-    task = get_task(
-        cutoff, 
-        n_layers, 
-        n_hidden, 
-        n_interacions, 
-        n_features, 
-        n_guassians, 
-        rho, 
-        learning_rate, 
-        postprocess,
-        activation
     )
+
+    task_kwargs = {"cutoff" : cutoff,
+                   "n_layers" : n_layers,
+                   "n_hidden" : n_hidden,
+                   "n_interactions" : n_interactions,
+                   "n_features" : n_features,
+                   "n_gaussians" : n_gaussians,
+                   "rho" : rho,
+                   "learning_rate" : learning_rate,
+                   "postprocess": postprocess,
+                   "activation" : activation}
+    
+    task = get_task(**task_kwargs)
 
     trainer = get_trainer(
         device, 
@@ -65,6 +65,11 @@ def main(fn_db: str, epochs: int, activation: str, n_cpu_data: int, n_cpu_train:
         strategy=strategy
     )
     
+    tuner = Tuner(trainer) # FIXME
+    lr_finder = tuner.lr_find(task, datamodule=dataset, early_stop_threshold=None, min_lr=1e-6, max_lr=0.1)
+    task_kwargs["learning_rate"] = lr_finder.suggestion()
+    task = get_task(**task_kwargs)
+    print(task.__dict__)
     trainer.fit(task, dataset, ckpt_path=checkpoint)
 
 

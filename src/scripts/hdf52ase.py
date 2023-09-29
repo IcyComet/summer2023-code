@@ -26,7 +26,7 @@ def convert(filnames: list,
         print('Sorry I didn\'t  implement energy yet')
 
     for filname in filnames:
-        data = HDF5Loader(filname, skip_initial=skip_initial, load_properties=False)
+        data = HDF5Loader(filname, skip_initial=skip_initial, load_properties=True)
         traj += data.convert_to_atoms()[::interval]
     
     if multiply is not None:

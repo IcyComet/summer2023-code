@@ -43,8 +43,8 @@ def get_hooks(
     if remove_com_motion:
         # remove center of mass motion
         com_motion = spkhooks.RemoveCOMMotion(every_n_steps=1,
-                                            remove_rotation=False, 
-                                            wrap_positions=False)
+                                            remove_rotation=False) 
+                                            # wrap_positions=False)
         simulation_hooks.append(com_motion)
 
     # Create the file logger

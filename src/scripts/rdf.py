@@ -20,7 +20,7 @@ def main(infile: str,
         slice_at: str = ':',
         nbins: int = 50,
         rmax: float = 11.255/2,
-        multiply: bool = False,
+        multiply = None,
         ) -> None:
     
     outfile = outfile +'_' if outfile is not None else ''
